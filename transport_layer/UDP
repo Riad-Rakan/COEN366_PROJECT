@@ -1,0 +1,16 @@
+
+
+#UDP header: 
+#16 bit source port, 16 bit dest port
+#16 bit length of header, 16 bit length of data, 
+
+def build_udp_header(src_port, dest_port, data):
+    length = 8 + len(data) #UDP header is 8 bytes
+    header = src_port.to_bytes(2, byteorder='big') + dest_port.to_bytes(2, byteorder='big') + length.to_bytes(2, byteorder='big')
+    return header
+
+def parse_udp_header(header):
+    src_port = int.from_bytes(header[0:2], byteorder='big')
+    dest_port = int.from_bytes(header[2:4], byteorder='big')
+    length = int.from_bytes(header[4:6], byteorder='big')
+    return src_port, dest_port, length
