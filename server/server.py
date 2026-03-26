@@ -1,5 +1,6 @@
 # server.py
-
+import sys
+sys.path.append("..")
 # Imports the built-in library for handling network connections
 import socket 
 # Imports the threading library so the server can do multiple things at exactly the same time

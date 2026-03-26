@@ -2,7 +2,10 @@
 
 import socket                                           # Imports Python's built-in library for handling network connections (both TCP and UDP)
 import random                                           # Imports the random library to generate random request numbers and ports
+import sys
+sys.path.append("..")
 from protocol import encode_msg, decode_msg, get_my_ip  # Imports your custom helper functions from your shared protocol.py file
+
 
 # --- SERVER CONFIGURATION ---
 SERVER_IP = '127.0.0.1'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
