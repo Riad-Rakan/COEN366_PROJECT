@@ -57,3 +57,16 @@ def register_with_server():
 # The guard block: only runs the registration function if you execute this file directly from the terminal
 if __name__ == "__main__":
     register_with_server()
+
+#2.5. Users publishing and receiving messages on subjects of interest (over UDP)
+def request_publish(name, subject, title, text):
+    client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Creates a new socket object for UDP communication
+    rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
+
+    # Uses your helper function to package the variables into a pipe-separated byte string.
+    # Format according to PDF: PUBLISH | RQ# | Name | Subject | Title | Text
+    msg_bytes = encode_msg("PUBLISH", rq_num, name, subject, title, text)
+    print(f"[CLIENT] Sending PUBLISH request for RQ#{rq_num}...")
+    # Sends the packaged byte string over UDP to the server's IP and UDP port
+    client_udp.sendto(msg_bytes, (SERVER_IP, SERVER_UDP_PORT))
+

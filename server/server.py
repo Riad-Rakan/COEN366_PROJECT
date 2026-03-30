@@ -19,6 +19,11 @@ UDP_PORT = 20000
 # interfaces (Wi-Fi, Ethernet, localhost). This is required if other computers are connecting to it.
 HOST = '0.0.0.0' 
 
+SERVER2_IP = '127.0.0.1'  # Replace with the actual IP address of Server 2
+
+storage = json.load(open("storage.json", "r")) # Loads the storage.json file into a Python dictionary called 'storage'
+users = json.load(open("users.json", "r")) # Loads the users.json file into a Python dictionary called 'users'
+
 def handle_tcp_client(client_socket, address):
     """This function acts as a dedicated worker for a single TCP connection."""
     print(f"[TCP] Connection established with {address}")
@@ -34,19 +39,28 @@ def handle_tcp_client(client_socket, address):
             
             # Checks if the first word in the message is the registration command
             if parsed_msg[0] == "REGISTER":
-                # Grabs the Request Number (RQ#) from the list
-                rq_num = parsed_msg[1]
-                
-                # Packages the success reply: REGISTERED | RQ#
-                response = encode_msg("REGISTERED", rq_num)
-                
-                # Sends the packaged reply back down the active TCP pipeline to the client
-                client_socket.send(response)
-                print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+                handle_registration_request(client_socket, parsed_msg)
                 
     finally:
         # TCP is a dedicated connection. Once the request is handled, we MUST close the pipeline.
         client_socket.close()
+
+def handle_udp_client(data, address):
+    """This function acts as a dedicated worker for a single UDP packet."""
+    print(f"[UDP] Received from {address}: {data}")
+    try:
+        # Unpackages the raw bytes into a readable Python list (e.g., ['PUBLISH', '1', 'User1', ...])
+        parsed_msg = decode_msg(data)
+        print(f"[UDP] Parsed message: {parsed_msg}")
+        
+        # Checks if the first word in the message is the publish command
+        if parsed_msg[0] == "PUBLISH":
+            handle_publish_request(address, parsed_msg)
+        elif parsed_msg[0] == "FORWARD":
+            forward_publish_to_clients(parsed_msg[1], parsed_msg[2], parsed_msg[3], parsed_msg[4])
+    finally:
+        # UDP is connectionless, so we don't have a pipeline to close. We just finish this function and wait for the next packet.
+        pass
 
 def start_tcp_server():
     """This function sets up the TCP receptionist and loops forever."""
@@ -89,9 +103,8 @@ def start_udp_server():
         # Because UDP is connectionless, it catches the raw 'data', and the 'addr' of whoever threw it.
         data, addr = server_udp.recvfrom(1024)
         
-        # Decodes the raw bytes into a Python list
-        parsed_msg = decode_msg(data)
-        print(f"[UDP] Received from {addr}: {parsed_msg}")
+        client_thread = threading.Thread(target=handle_udp_client, args=(data, addr))
+        client_thread.start()
 
 # The guard block: only runs this startup sequence if you run server.py directly
 if __name__ == "__main__":
@@ -107,3 +120,74 @@ if __name__ == "__main__":
     # The two threads above are running in the background, so the main program needs a way to stay open.
     # This input() function simply pauses the main script until you press the Enter key in the terminal.
     input("[SERVER] Press Enter to shut down the server...\n")
+
+
+def handle_registration_request(client_socket, parsed_msg):
+    # Grabs the Request Number (RQ#) from the list
+    rq_num = parsed_msg[1]
+    
+    # Packages the success reply: REGISTERED | RQ#
+    response = encode_msg("REGISTERED", rq_num)
+    
+    # Sends the packaged reply back down the active TCP pipeline to the client
+    client_socket.send(response)
+    print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+
+#2.5. Users publishing and receiving messages on subjects of interest (over UDP)
+def handle_publish_request(address, parsed_msg):
+    # Grabs the Request Number (RQ#) from the list
+    rq_num = parsed_msg[1]
+
+    name = parsed_msg[2]
+    subject = parsed_msg[3]
+    title = parsed_msg[4]
+    text = parsed_msg[5]
+
+    name_valid = False
+    subject_valid = False
+
+    for user in users:
+        if name == user:
+            name_valid = True
+            break
+
+    for subject in storage:
+        if subject == subject:
+            subject_valid = True
+            break
+
+    if not name_valid:
+        response = encode_msg("PUBLISH-DENIED", rq_num, "Invalid Name")
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_socket.sendto(response, address)
+        print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Name")
+        return
+    
+    if not subject_valid:
+        response = encode_msg("PUBLISH-DENIED", rq_num, "Invalid Subject")
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_socket.sendto(response, address)
+        print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Subject")
+        return
+    
+    forward_publish_to_clients(name, subject, title, text)
+    forward_publish_to_servers(name, subject, title, text)
+    print(f"[UDP] Successfully handled PUBLISH request for RQ#{rq_num}. Forwarded to clients and servers.")
+    
+def forward_publish_to_clients(name, subject, title, text):
+    # This function will be responsible for blasting the news out to all interested users over UDP.
+    response = encode_msg("MESSAGE", name, subject, title, text)
+    for user in users:
+        if subject in users[user]["interests"]:
+            user_ip = users[user]["ip"]
+            user_udp_port = users[user]["udp_port"]
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            udp_socket.sendto(response, (user_ip, user_udp_port))
+            print(f"[UDP] Forwarded message to {user} at {user_ip}:{user_udp_port}")
+
+def forward_publish_to_servers(name, subject, title, text):
+    # This function will be responsible for forwarding the news to other servers over TCP.
+    response = encode_msg("FORWARD", name, subject, title, text)
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    if SERVER2_IP != '127.0.0.1': udp_socket.sendto(response, (SERVER2_IP, UDP_PORT)) #only send if there is a second server which is not localhost
+    print(f"[UDP] Forwarded message to Server 2 at {SERVER2_IP}:{UDP_PORT}")
