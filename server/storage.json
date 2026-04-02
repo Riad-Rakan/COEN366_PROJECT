@@ -1,3 +1,18 @@
 {
-
+    "computer engineering": {
+        "article title 1": {
+            "text": "article text.",
+            "comments": {
+                "User1": "comment text.",
+                "User2": "comment text."
+            }
+        },
+        "article title 2": {
+            "text": "article text.",
+            "comments": {
+                "User1": "comment text.",
+                "User2": "comment text."
+            }
+        }
+    }
 }

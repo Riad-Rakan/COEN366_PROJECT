@@ -19,7 +19,7 @@ UDP_PORT = 20000
 # interfaces (Wi-Fi, Ethernet, localhost). This is required if other computers are connecting to it.
 HOST = '0.0.0.0' 
 
-SERVER2_IP = '127.0.0.1'  # Replace with the actual IP address of Server 2
+OTHER_SERVER_IP = '127.0.0.1'  # Replace with the actual IP address of Server 2
 
 storage = json.load(open("storage.json", "r")) # Loads the storage.json file into a Python dictionary called 'storage'
 users = json.load(open("users.json", "r")) # Loads the users.json file into a Python dictionary called 'users'
@@ -133,7 +133,8 @@ def handle_registration_request(client_socket, parsed_msg):
     client_socket.send(response)
     print(f"[TCP] Sent confirmation for RQ#{rq_num}")
 
-#2.5. Users publishing and receiving messages on subjects of interest (over UDP)
+
+#========== 2.5. Users publishing and receiving messages on subjects of interest (over UDP) ==========
 def handle_publish_request(address, parsed_msg):
     # Grabs the Request Number (RQ#) from the list
     rq_num = parsed_msg[1]
@@ -170,6 +171,14 @@ def handle_publish_request(address, parsed_msg):
         print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Subject")
         return
     
+    #save article
+    for subject in storage:
+        if subject == subject:
+            storage[subject].append({"title": title, "text": text})
+            with open("storage.json", "w") as f:
+                json.dump(storage, f, indent=4)
+            break
+    
     forward_publish_to_clients(name, subject, title, text)
     forward_publish_to_servers(name, subject, title, text)
     print(f"[UDP] Successfully handled PUBLISH request for RQ#{rq_num}. Forwarded to clients and servers.")
@@ -186,8 +195,45 @@ def forward_publish_to_clients(name, subject, title, text):
             print(f"[UDP] Forwarded message to {user} at {user_ip}:{user_udp_port}")
 
 def forward_publish_to_servers(name, subject, title, text):
-    # This function will be responsible for forwarding the news to other servers over TCP.
+    # This function will be responsible for forwarding the news to other servers over UDP.
     response = encode_msg("FORWARD", name, subject, title, text)
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    if SERVER2_IP != '127.0.0.1': udp_socket.sendto(response, (SERVER2_IP, UDP_PORT)) #only send if there is a second server which is not localhost
-    print(f"[UDP] Forwarded message to Server 2 at {SERVER2_IP}:{UDP_PORT}")
+    if OTHER_SERVER_IP != '127.0.0.1': udp_socket.sendto(response, (OTHER_SERVER_IP, UDP_PORT)) #only send if there is a second server which is not localhost
+    print(f"[UDP] Forwarded message to Server 2 at {OTHER_SERVER_IP}:{UDP_PORT}")
+
+
+#========== 2.6 Commenting messages (over UDP) ==========
+def handle_comment_request(parsed_msg):
+    for subject in storage:
+        if subject == parsed_msg[2]:
+            for article in storage[subject]:
+                if article["title"] == parsed_msg[3]:
+                    for comment in article["comments"]:
+                        if comment["name"] == parsed_msg[1] and comment["text"] == parsed_msg[4]:
+                            print(f"[UDP] Duplicate comment detected. Ignoring.")
+                            return
+                    article["comments"].append({"name": parsed_msg[1], "text": parsed_msg[4]})
+                    with open("storage.json", "w") as f:
+                        json.dump(storage, f, indent=4)
+                    break
+
+    forward_publish_comment_to_servers(parsed_msg)
+    forward_publish_comment_to_clients(parsed_msg[1], parsed_msg[2], parsed_msg[3], parsed_msg[4])
+
+#PUBLISH-COMMENT is common between client->server and server->server, but client is the one who creates the encoded message.
+def forward_publish_comment_to_servers(encoded_data):
+    # This function will be responsible for forwarding the comment to other servers over UDP.
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    if OTHER_SERVER_IP != '127.0.0.1': udp_socket.sendto(encoded_data, (OTHER_SERVER_IP, UDP_PORT)) #only send if there is a second server which is not localhost
+    print(f"[UDP] Forwarded comment to Server 2 at {OTHER_SERVER_IP}:{UDP_PORT}")
+
+def forward_publish_comment_to_clients(name, subject, title, text):
+    # This function will be responsible for blasting the comment out to all interested users over UDP.
+    response = encode_msg("MESSAGE-COMMENT", name, subject, title, text)
+    for user in users:
+        if subject in users[user]["interests"]:
+            user_ip = users[user]["ip"]
+            user_udp_port = users[user]["udp_port"]
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            udp_socket.sendto(response, (user_ip, user_udp_port))
+            print(f"[UDP] Forwarded comment to {user} at {user_ip}:{user_udp_port}")

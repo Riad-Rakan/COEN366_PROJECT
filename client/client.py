@@ -64,9 +64,21 @@ def request_publish(name, subject, title, text):
     rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
 
     # Uses your helper function to package the variables into a pipe-separated byte string.
-    # Format according to PDF: PUBLISH | RQ# | Name | Subject | Title | Text
+    # Format: PUBLISH | RQ# | Name | Subject | Title | Text
     msg_bytes = encode_msg("PUBLISH", rq_num, name, subject, title, text)
     print(f"[CLIENT] Sending PUBLISH request for RQ#{rq_num}...")
     # Sends the packaged byte string over UDP to the server's IP and UDP port
     client_udp.sendto(msg_bytes, (SERVER_IP, SERVER_UDP_PORT))
 
+#2.6 Commenting messages (over UDP)
+#Publish Comment is created by a client and sent to server. This will be forwarded to the other server as-is
+def publish_comment(name, subject, title, text):
+    client_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Creates a new socket object for UDP communication
+    rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific comment attempt
+
+    # Uses your helper function to package the variables into a pipe-separated byte string.
+    # Format: PUBLISH-COMMENT | RQ# | Name | Subject | Title | Text
+    msg_bytes = encode_msg("PUBLISH-COMMENT", rq_num, name, subject, title, text)
+    print(f"[CLIENT] Sending PUBLISH-COMMENT request for RQ#{rq_num}...")
+    # Sends the packaged byte string over UDP to the server's IP and UDP port
+    client_udp.sendto(msg_bytes, (SERVER_IP, SERVER_UDP_PORT))
