@@ -1,0 +1,10 @@
+{
+    "registered_users": {
+        "User1": {
+            "ip": "192.168.1.15",
+            "tcp_port": 50000,
+            "udp_port": 60000,
+            "interests": ["computer engineering", "AI"]
+        }
+    }
+}
