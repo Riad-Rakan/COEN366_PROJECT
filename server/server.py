@@ -42,6 +42,10 @@ class Server:
                 # Checks if the first word in the message is the registration command
                 if parsed_msg[0] == "REGISTER":
                     self.handle_registration_request(client_socket, parsed_msg)
+                elif parsed_msg[0] == 'UPDATE':
+                    self.handle_update_request(client_socket, parsed_msg)
+                elif parsed_msg[0] == 'SUBJECTS':
+                    self.handle_subjects_request(client_socket, parsed_msg)
                     
         finally:
             # TCP is a dedicated connection. Once the request is handled, we MUST close the pipeline.
@@ -144,7 +148,69 @@ class Server:
         # Sends the packaged reply back down the active TCP pipeline to the client
         client_socket.send(response)
         print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+    
 
+    # ========================================================================
+    # 2.3. Users updating their information (over TCP)
+    # ========================================================================
+    def handle_update_request(self, client_socket, parsed_msg):
+        # Grabs the Request Number (RQ#) from the list
+        rq_num = parsed_msg[1]
+
+        #Extracts client information from update message
+        #Format: UPDATE | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+        client_name = parsed_msg[2]
+        client_ip = parsed_msg[3]
+        client_tcp_port = int(parsed_msg[4])
+        client_udp_port = int(parsed_msg[5])
+
+        #Updates user dictionary with new client information
+        self.users[client_name] = {
+            "ip":client_ip,
+            "tcp_port": client_tcp_port,
+            "udp_port": client_udp_port
+        }
+
+        #Saves the updated dictionary to storable .json
+        with open("users.json", "w") as f:
+            json.dump(self.users, f, indent = 4)
+        
+        print(f"[TCP] Updated user: {client_name} to {client_ip}:{client_udp_port} with TCP port {client_tcp_port}")
+
+        #Packages success response with format: UPDATE-CONFIRMED | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+        response = encode_msg("UPDATE-CONFIRMED", rq_num, client_name, client_ip, client_tcp_port, client_udp_port)
+
+        #Sends packaged response down the active TCP pipeline to the user
+        client_socket.send(response)
+        print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+
+
+    # ========================================================================
+    # 2.3. Users updating their subjects of interest (over TCP)
+    # ========================================================================
+    def handle_subjects_request(self, client_socket, parsed_msg):
+        # Grabs the Request Number (RQ#) from the list
+        rq_num = parsed_msg[1]
+
+        #Extracts client information from update message
+        #Format: SUBJECTS | RQ# | Name | List of Subjects
+        client_name = parsed_msg[2]
+        client_interests = parsed_msg[3:]
+
+        self.users[client_name]["interests"] = client_interests
+
+        #Saves the updated dictionary to storable .json
+        with open("users.json", "w") as f:
+            json.dump(self.users, f, indent = 4)
+
+        print(f"[TCP] Updated subjects of interest for {client_name}: {client_interests}")
+
+        #Packages success response with format: UPDATE-CONFIRMED | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+        response = encode_msg("SUBJECTS-UPDATED", rq_num, client_name, client_interests)
+
+        #Sends packaged response down the active TCP pipeline to the user
+        client_socket.send(response)
+        print(f"[TCP] Sent confirmation for RQ#{rq_num}")
 
     # ========================================================================
     # 2.5. Users publishing and receiving messages on subjects of interest (over UDP)
