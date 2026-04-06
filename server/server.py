@@ -1,23 +1,32 @@
-# server.py
-import sys
+import sys,socket,threading,json,os
 sys.path.append("..")
-# Imports the built-in library for handling network connections
-import socket 
-# Imports the threading library so the server can do multiple things at exactly the same time
-import threading 
-# Imports your custom helper functions to convert bytes to strings and back
-from protocol import decode_msg, encode_msg
-# Imports the json library (useful later for saving your users to the storage.json file)
-import json 
+from protocol import decode_msg, encode_msg                 # Imports your custom helper functions to convert bytes to strings and back
 
 # --- SERVER CONFIGURATION ---
 # The fixed port for all administrative "paperwork" (Registration, Updates, etc.)
 TCP_PORT = 10000 
 # The fixed port for blasting out and receiving the actual news broadcasts
-UDP_PORT = 20000 
+UDP_PORT = 20000
 # '0.0.0.0' is a special address that tells the server to listen on ALL available network 
 # interfaces (Wi-Fi, Ethernet, localhost). This is required if other computers are connecting to it.
 HOST = '0.0.0.0' 
+
+STORAGE_FILE = "storage.json"
+registered_users = {} # This dictionary holds the data while the server is running
+
+def load_data():
+    """Loads existing users from the JSON file when the server starts."""
+    global registered_users
+    if os.path.exists(STORAGE_FILE):
+        with open(STORAGE_FILE, "r") as f:
+            registered_users = json.load(f)
+            print(f"[SERVER] Loaded {len(registered_users)} users from database.")
+
+def save_data():
+    """Writes the current dictionary into the JSON file."""
+    with open(STORAGE_FILE, "w") as f:
+        # indent=4 makes the JSON file nicely formatted and easy to read
+        json.dump(registered_users, f, indent=4)
 
 def handle_tcp_client(client_socket, address):
     """This function acts as a dedicated worker for a single TCP connection."""
@@ -36,6 +45,16 @@ def handle_tcp_client(client_socket, address):
             if parsed_msg[0] == "REGISTER":
                 # Grabs the Request Number (RQ#) from the list
                 rq_num = parsed_msg[1]
+                name = parsed_msg[2]
+
+                registered_users[name] = {
+                    "ip": parsed_msg[3],
+                    "tcp_port": int(parsed_msg[4]),
+                    "udp_port": int(parsed_msg[5]),
+                    "interests": [] 
+                }
+
+                save_data()
                 
                 # Packages the success reply: REGISTERED | RQ#
                 response = encode_msg("REGISTERED", rq_num)
@@ -43,6 +62,21 @@ def handle_tcp_client(client_socket, address):
                 # Sends the packaged reply back down the active TCP pipeline to the client
                 client_socket.send(response)
                 print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+
+            if parsed_msg[0] == "DE-REGISTER":
+                # Grabs the Request Number (RQ#) from the list
+                rq_num = parsed_msg[1]
+                name = parsed_msg[2]
+
+                if name in registered_users:
+                    del registered_users[name] # <--- Actually removes them!
+                    save_data()
+                    print(f"[SERVER] User {name} deleted from database.")
+                else:
+                    print(f"[SERVER] User {name} not found. Ignored.")
+                    
+                print(f"[SERVER] User {name} deleted from database.")
+
     finally:
         # TCP is a dedicated connection. Once the request is handled, we MUST close the pipeline.
         client_socket.close()
@@ -94,6 +128,7 @@ def start_udp_server():
 
 # The guard block: only runs this startup sequence if you run server.py directly
 if __name__ == "__main__":
+    load_data()
     
     # We want both the TCP and UDP servers to run simultaneously without blocking each other.
     # So, we launch the TCP server loop in its own background thread.

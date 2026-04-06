@@ -5,7 +5,6 @@ from protocol import encode_msg, decode_msg
 def register_with_server(server_ip, server_tcp_port, client_name, client_ip, client_tcp_port, client_udp_port):
                                                         # (client_tcp) is a new socket object (AF_INET) -> IPV4 | (SOCK_STREAM) -> TCP
     client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
     try:                                                
         print(f"[CLIENT] Connecting to Server at {server_ip}:{server_tcp_port}...")
         client_tcp.connect((server_ip,server_tcp_port)) # Attemps to establish TCP conextion handshake with the server
@@ -38,4 +37,3 @@ def deregister_with_server(server_ip, server_tcp_port, client_name):
         print("[CLIENT] Connection failed. Is server running?")
     finally:                                            # In all cases, close the TCP link
         client_tcp.close()
-    
