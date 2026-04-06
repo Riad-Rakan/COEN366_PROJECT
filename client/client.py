@@ -10,11 +10,6 @@ from protocol import encode_msg, decode_msg, get_my_ip  # Imports your custom he
 
 class Client:
 
-    def __init__(self):
-        self.name = ""
-        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Create a UDP socket for sending messages
-        self.udp_sock.bind((self.CLIENT_IP, self.CLIENT_UDP_PORT))  # Bind to the client's listening UDP port
-
     # --- SERVER CONFIGURATION ---
     SERVER_IP = '100.100.238.78'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
     SERVER_TCP_PORT = 10000                                 # The fixed TCP port the server is listening on for administrative tasks (like Registration)
@@ -22,9 +17,15 @@ class Client:
 
     # --- CLIENT CONFIGURATION ---
     name = ""                                   # The unique name for this specific user in the News Sharing System
-    CLIENT_IP = get_my_ip()                                 # Calls your helper function to automatically find this computer's local IP address
+    CLIENT_IP = '100.78.41.47'
+    #CLIENT_IP = get_my_ip()                                 # Calls your helper function to automatically find this computer's local IP address
     CLIENT_TCP_PORT = random.randint(50000, 55000)          # Randomly selects a TCP port for the client to use (prevents conflicts if testing multiple clients on one PC)
     CLIENT_UDP_PORT = random.randint(60000, 65000)          # Randomly selects a UDP port for the client to listen for incoming news on
+
+    def __init__(self):
+        self.name = ""
+        self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Create a UDP socket for sending messages
+        self.udp_sock.bind((self.CLIENT_IP, self.CLIENT_UDP_PORT))  # Bind to the client's listening UDP port
 
     def register_with_server(self, name: str):
         self.name = name
@@ -40,10 +41,10 @@ class Client:
         tcp_handler.request_subjects_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
 
     def request_publish(self, subject, title, text):
-        udp_handler.request_publish(self.CLIENT_IP, self.CLIENT_UDP_PORT, self.SERVER_IP, self.SERVER_TCP_PORT, self.name, subject, title, text)
+        udp_handler.request_publish(self.udp_sock, self.SERVER_IP, self.SERVER_UDP_PORT, self.name, subject, title, text)
 
     def publish_comment(self, subject, title, text):
-        udp_handler.publish_comment(self.CLIENT_IP, self.CLIENT_UDP_PORT, self.SERVER_IP, self.SERVER_TCP_PORT, self.name, subject, title, text)
+        udp_handler.publish_comment(self.udp_sock, self.SERVER_IP, self.SERVER_UDP_PORT, self.name, subject, title, text)
 
 
     # ========================================================================
