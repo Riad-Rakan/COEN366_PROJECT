@@ -105,22 +105,26 @@ class ClientUI:
         self.client.register_with_server(name)
         self.pause_for_input()
     
+    # Automatically passes current ip, tcp and udp ports to client request_update method
     def run_update(self):
         print("[LOG] Updating connection information with current user values...")
         self.client.request_update()
         print("[LOG] Send update request to the server.")
 
+    # Asks user to input desired subjects separated by commas, and passes to relevant client.py method
     def run_subjects(self):
         print("[LOG] Update subjects of interest - Enter details:")
         
         subjects = self.get_input("Enter subjects separated by commas: ")
         subjects_list = subjects.split(",")
         cleaned_list = []
+        # Strips each subject and appends it to a cleaned list to be passed to client method
         for subject in subjects_list:
             subject = subject.strip()
             if subject:
               cleaned_list.append(subject)
         
+        # If user enters at least one string as a subject it is passed to the relevant client method
         if cleaned_list:
             self.client.request_subjects_update(*cleaned_list)
             print("[LOG] Sent subjects request to server.")
