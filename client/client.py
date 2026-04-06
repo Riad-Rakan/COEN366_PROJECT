@@ -95,7 +95,7 @@ class Client:
 
         # Packages the variables into a pipe-separated byte string using helper method from protocol method.
         # Format: SUBJECTS | RQ# | Name | List of Subjects
-        msg_bytes = encode_msg("SUBJECTS", rq_num, self.name, subject_list)
+        msg_bytes = encode_msg("SUBJECTS", rq_num, self.name, *subject_list)
         print(f"[CLIENT] Sending SUBJECTS request for RQ#{rq_num} over TCP...")
         # Creates a new socket object connecting to server IPv4 address over TCP
         # Sends the packaged byte string through this connection

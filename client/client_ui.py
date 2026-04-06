@@ -70,6 +70,16 @@ class ClientUI:
                 self.run_register
             ),
             MenuOption(
+                "Update User Connection Information",
+                "Connect to server and update your IP address, TCP port, and UDP port",
+                self.run_update
+            ),
+            MenuOption(
+                "Update Subjects of Interest",
+                "Connect to server and update your subjects of interest list for news updates",
+                self.run_subjects
+            ),
+            MenuOption(
                 "Publish News",
                 "Publish a news message to a subject",
                 self.run_publish
@@ -95,6 +105,30 @@ class ClientUI:
         self.client.register_with_server(name)
         self.pause_for_input()
     
+    def run_update(self):
+        print("[LOG] Updating connection information with current user values...")
+        self.client.request_update()
+        print("[LOG] Send update request to the server.")
+
+    def run_subjects(self):
+        print("[LOG] Update subjects of interest - Enter details:")
+        
+        subjects = self.get_input("Enter subjects separated by commas: ")
+        subjects_list = subjects.split(",")
+        cleaned_list = []
+        for subject in subjects_list:
+            subject = subject.strip()
+            if subject:
+              cleaned_list.append(subject)
+        
+        if cleaned_list:
+            self.client.request_subjects_update(*cleaned_list)
+            print("[LOG] Sent subjects request to server.")
+        else:
+            print("[ERROR] Missing required fields")
+        
+        self.pause_for_input()
+
     def run_publish(self):
         print("[LOG] Publish News - Enter details:")
         
