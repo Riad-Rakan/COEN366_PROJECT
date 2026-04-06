@@ -5,7 +5,7 @@ import random                                           # Imports the random lib
 import sys
 import threading                                        # Imports threading library for concurrent listening operations
 sys.path.append("..")
-from client import tcp_handler, udp_handler
+import tcp_handler, udp_handler
 from protocol import encode_msg, decode_msg, get_my_ip  # Imports your custom helper functions from your shared protocol.py file
 
 class Client:
@@ -16,7 +16,7 @@ class Client:
         self.udp_sock.bind((self.CLIENT_IP, self.CLIENT_UDP_PORT))  # Bind to the client's listening UDP port
 
     # --- SERVER CONFIGURATION ---
-    SERVER_IP = '192.168.50.127'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
+    SERVER_IP = '100.100.238.78'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
     SERVER_TCP_PORT = 10000                                 # The fixed TCP port the server is listening on for administrative tasks (like Registration)
     SERVER_UDP_PORT = 20000                                 # The fixed UDP port the server uses to blast out news messages
 
