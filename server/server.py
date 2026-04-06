@@ -6,7 +6,7 @@ import socket
 # Imports the threading library so the server can do multiple things at exactly the same time
 import threading 
 # Imports your custom helper functions to convert bytes to strings and back
-from protocol import decode_msg, encode_msg 
+from protocol import decode_msg, encode_msg
 # Imports the json library (useful later for saving your users to the storage.json file)
 import json 
 
@@ -43,7 +43,6 @@ def handle_tcp_client(client_socket, address):
                 # Sends the packaged reply back down the active TCP pipeline to the client
                 client_socket.send(response)
                 print(f"[TCP] Sent confirmation for RQ#{rq_num}")
-                
     finally:
         # TCP is a dedicated connection. Once the request is handled, we MUST close the pipeline.
         client_socket.close()
