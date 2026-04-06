@@ -281,10 +281,7 @@ class Server:
                 name_valid = True
                 break
 
-        for subject in self.storage:
-            if subject == requested_subject:
-                subject_valid = True
-                break
+        subject_valid = requested_subject in self.storage
 
         if not name_valid:
             response = encode_msg("PUBLISH-DENIED", rq_num, "Invalid Name")
@@ -300,15 +297,17 @@ class Server:
             print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Subject")
             return
         
-        #save article
-        for subject in self.storage:
-            if subject == requested_subject:
-                self.storage[subject].append({"title": title, "text": text})
-                self.save_storage()
-                break
+        # Save article using title as the article key
+        if title in self.storage[requested_subject]:
+            print(f"[UDP] Duplicate article title detected for subject '{requested_subject}'. Overwriting existing article.")
+        self.storage[requested_subject][title] = {
+            "text": text,
+            "comments": {}
+        }
+        self.save_storage()
         
-        self.forward_publish_to_clients(name, subject, title, text)
-        self.forward_publish_to_servers(name, subject, title, text)
+        self.forward_publish_to_clients(name, requested_subject, title, text)
+        self.forward_publish_to_servers(name, requested_subject, title, text)
         print(f"[UDP] Successfully handled PUBLISH request for RQ#{rq_num}. Forwarded to clients and servers.")
         
     def forward_publish_to_clients(self, name, subject, title, text):
@@ -335,29 +334,30 @@ class Server:
     # ========================================================================
     def handle_comment_request(self, address, parsed_msg):
 
-        found_article = False
+        subject = parsed_msg[2]
+        title = parsed_msg[3]
+        commenter = parsed_msg[1]
+        comment_text = parsed_msg[4]
 
-        for subject in self.storage:
-            if subject == parsed_msg[2]:
-                for article in self.storage[subject]:
-                    if article["title"] == parsed_msg[3]:
-                        found_article = True
-                        for comment in article["comments"]:
-                            if comment["name"] == parsed_msg[1] and comment["text"] == parsed_msg[4]:
-                                print(f"[UDP] Duplicate comment detected. Ignoring.")
-                                return
-                        article["comments"].append({"name": parsed_msg[1], "text": parsed_msg[4]})
-                        self.save_storage()
-                        break
-
-        if not found_article:
+        if subject not in self.storage or title not in self.storage[subject]:
             print(f"[UDP] Article not found for comment. Ignoring.")
             return
 
-        #Forward to other server if sender was a client. Since all servers have the same port, we can check it to determine if the sender was a server.
+        article = self.storage[subject][title]
+        if "comments" not in article or not isinstance(article["comments"], dict):
+            article["comments"] = {}
+
+        if commenter in article["comments"] and article["comments"][commenter] == comment_text:
+            print(f"[UDP] Duplicate comment detected. Ignoring.")
+            return
+
+        article["comments"][commenter] = comment_text
+        self.save_storage()
+
+        # Forward to other server if sender was a client. Since all servers have the same port, we can check it to determine if the sender was a server.
         if address[1] != self.UDP_PORT:
             self.forward_publish_comment_to_servers(parsed_msg)
-        self.forward_publish_comment_to_clients(parsed_msg[1], parsed_msg[2], parsed_msg[3], parsed_msg[4])
+        self.forward_publish_comment_to_clients(commenter, subject, title, comment_text)
 
     #PUBLISH-COMMENT is common between client->server and server->server, but client is the one who creates the encoded message.
     def forward_publish_comment_to_servers(self, encoded_data):

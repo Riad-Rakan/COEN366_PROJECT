@@ -37,7 +37,7 @@ class Client:
     def request_update(self):
         tcp_handler.request_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
-    def request_subject_update(self, subjects_of_interest):
+    def request_subjects_update(self, subjects_of_interest):
         tcp_handler.request_subjects_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
 
     def request_publish(self, subject, title, text):

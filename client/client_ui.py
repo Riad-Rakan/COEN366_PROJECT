@@ -252,26 +252,49 @@ class ClientUI:
             print(f"{marker}[{i+1}] {option.name}")
             print(f"     {option.description}")
         print()
-        print("Use UP/DOWN arrow keys to navigate, ENTER to select, ESC to quit")
+        if sys.platform == "win32":
+            print("Use UP/DOWN arrow keys to navigate, ENTER to select, ESC to quit")
+        else:
+            print("Enter the option number and press ENTER to select")
         print("=" * 80)
         
         sys.stdout = self.log_capture
     
+    def get_menu_selection(self):
+        selection = self.get_input("Select an option number: ")
+        if not selection.strip():
+            return None
+        if selection.isdigit():
+            index = int(selection) - 1
+            if 0 <= index < len(self.menu_options):
+                self.current_selection = index
+                return self.current_selection
+        print("[ERROR] Invalid selection. Please enter a number from the menu.")
+        self.pause_for_input()
+        return None
+
     def run(self):
-        print("[LOG] Client UI started. Use arrow keys to navigate.")
+        if sys.platform == "win32":
+            print("[LOG] Client UI started. Use arrow keys to navigate.")
+        else:
+            print("[LOG] Client UI started. Use the menu number to select options.")
         
         while self.running:
             self.render_screen()
             
-            if self.handle_key_press():
-                selected = self.menu_options[self.current_selection]
-                if selected.name == "Exit":
-                    selected.func()
-                else:
+            if sys.platform == "win32":
+                if self.handle_key_press():
+                    selected = self.menu_options[self.current_selection]
                     print(f"\n[ACTION] Selected: {selected.name}")
                     selected.func()
+                else:
+                    time.sleep(0.05)  # Small delay to reduce CPU usage
             else:
-                time.sleep(0.05)  # Small delay to reduce CPU usage
+                selected_index = self.get_menu_selection()
+                if selected_index is not None:
+                    selected = self.menu_options[selected_index]
+                    print(f"\n[ACTION] Selected: {selected.name}")
+                    selected.func()
         
         sys.stdout = self.log_capture.original_stdout
         print("\n[LOG] Client UI closed.")
