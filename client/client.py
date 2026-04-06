@@ -17,8 +17,8 @@ class Client:
 
     # --- CLIENT CONFIGURATION ---
     name = ""                                   # The unique name for this specific user in the News Sharing System
-    CLIENT_IP = '100.78.41.47'
-    #CLIENT_IP = get_my_ip()                                 # Calls your helper function to automatically find this computer's local IP address
+    #CLIENT_IP = '100.78.41.47'                                # Uncomment to manually assign IP address
+    CLIENT_IP = get_my_ip()                                 # Calls your helper function to automatically find this computer's local IP address
     CLIENT_TCP_PORT = random.randint(50000, 55000)          # Randomly selects a TCP port for the client to use (prevents conflicts if testing multiple clients on one PC)
     CLIENT_UDP_PORT = random.randint(60000, 65000)          # Randomly selects a UDP port for the client to listen for incoming news on
 
