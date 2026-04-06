@@ -3,6 +3,21 @@
         "ip": "192.168.1.15",
         "tcp_port": 50000,
         "udp_port": 60000,
-        "interests": ["computer engineering", "AI"]
+        "interests": [
+            "computer engineering",
+            "AI"
+        ]
+    },
+    "newuser": {
+        "ip": "192.168.50.186",
+        "tcp_port": 53969,
+        "udp_port": 63216,
+        "interests": []
+    },
+    "nerwuser": {
+        "ip": "192.168.50.186",
+        "tcp_port": 52938,
+        "udp_port": 63719,
+        "interests": []
     }
 }
