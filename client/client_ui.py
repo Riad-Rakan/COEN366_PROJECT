@@ -70,6 +70,11 @@ class ClientUI:
                 self.run_register
             ),
             MenuOption(
+                "Deregister from Server",
+                "Connect to server and deregister your client",
+                self.run_deregister
+            ),
+            MenuOption(
                 "Update User Connection Information",
                 "Connect to server and update your IP address, TCP port, and UDP port",
                 self.run_update
@@ -103,6 +108,11 @@ class ClientUI:
         print("[LOG] Starting registration...")
         name = self.get_input("Enter your name: ")
         self.client.register_with_server(name)
+        self.pause_for_input()
+
+    def run_deregister(self):
+        print("[LOG] Starting deregistration...")
+        self.client.deregister_with_server()
         self.pause_for_input()
     
     # Automatically passes current ip, tcp and udp ports to client request_update method

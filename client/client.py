@@ -5,6 +5,7 @@ import random                                           # Imports the random lib
 import sys
 import threading                                        # Imports threading library for concurrent listening operations
 sys.path.append("..")
+from client import tcp_handler, udp_handler
 from protocol import encode_msg, decode_msg, get_my_ip  # Imports your custom helper functions from your shared protocol.py file
 
 class Client:
@@ -26,110 +27,23 @@ class Client:
     CLIENT_UDP_PORT = random.randint(60000, 65000)          # Randomly selects a UDP port for the client to listen for incoming news on
 
     def register_with_server(self, name: str):
-
-        # Update the name inside this object
         self.name = name
+        tcp_handler.register_with_server(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
-        # Creates a new socket object. 
-        # AF_INET means we are using standard IPv4 addresses. 
-        # SOCK_STREAM means we are using TCP (a reliable, connection-oriented protocol).
-        client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
-        try:
-            print(f"[CLIENT] Connecting to Server at {self.SERVER_IP}:{self.SERVER_TCP_PORT}...")
-            client_tcp.connect((self.SERVER_IP, self.SERVER_TCP_PORT))# Attempts to establish the actual TCP connection handshake with the server
-            rq_num = random.randint(0, 200)                 # Generates a random Request Number (RQ#) to track this specific registration attempt
+    def deregister_with_server(self):
+        tcp_handler.deregister_with_server(self.SERVER_IP, self.SERVER_TCP_PORT, self.name)
 
-            
-            # Uses your helper function to package the variables into a pipe-separated byte string.
-            # Format according to PDF: REGISTER | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
-            msg_bytes = encode_msg("REGISTER", rq_num, name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
-            
-            print("[CLIENT] Sending registration request...")
-            # Sends the packaged byte string over the active TCP connection to the server
-            client_tcp.send(msg_bytes)
-            
-            # Pauses the script and waits to receive up to 1024 bytes of data back from the server
-            response = client_tcp.recv(1024)
-            
-            # Unpackages the raw bytes from the server back into a readable Python list
-            parsed_response = decode_msg(response)
-            
-            # Prints the server's reply (which should be something like ['REGISTERED', '150'])
-            print(f"[CLIENT] Server replied: {parsed_response}")
-            
-        except ConnectionRefusedError:
-            # If the server isn't running or the IP/Port is wrong, this catches the error so the program doesn't crash
-            print("[CLIENT] Connection failed. Is the server running?")
-        finally:
-            # Regardless of success or failure, TCP requires you to close the connection when finished
-            client_tcp.close()
-
-    # The guard block: only runs the registration function if you execute this file directly from the terminal
-    if __name__ == "__main__":
-        register_with_server()
-
-
-    # ========================================================================
-    # 2.3. Users updating their information (over TCP)
-    # ========================================================================
     def request_update(self):
-        rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
+        tcp_handler.request_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
-        # Packages the variables into a pipe-separated byte string using helper method from protocol method.
-        # Format: UPDATE | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
-        msg_bytes = encode_msg("UPDATE", rq_num, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
-        print(f"[CLIENT] Sending UPDATE request for RQ#{rq_num} over TCP...")
-        # Creates a new socket object connecting to server IPv4 address over TCP
-        # Sends the packaged byte string through this connection
-        client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_tcp.connect((self.SERVER_IP, self.SERVER_TCP_PORT))
-        client_tcp.send(msg_bytes)
+    def request_subject_update(self, subjects_of_interest):
+        tcp_handler.request_subjects_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
 
-      
-    # ========================================================================
-    # 2.4. Users updating their subjects of interest (over TCP)
-    # ========================================================================
-    def request_subjects_update(self, *subject_list):
-        rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
-
-        # Packages the variables into a pipe-separated byte string using helper method from protocol method.
-        # Format: SUBJECTS | RQ# | Name | List of Subjects
-        msg_bytes = encode_msg("SUBJECTS", rq_num, self.name, *subject_list)
-        print(f"[CLIENT] Sending SUBJECTS request for RQ#{rq_num} over TCP...")
-        # Creates a new socket object connecting to server IPv4 address over TCP
-        # Sends the packaged byte string through this connection
-        client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_tcp.connect((self.SERVER_IP, self.SERVER_TCP_PORT))
-        client_tcp.send(msg_bytes)
-
-
-    # ========================================================================
-    # 2.5. Users publishing and receiving messages on subjects of interest (over UDP)
-    # ========================================================================
     def request_publish(self, subject, title, text):
-        rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
+        udp_handler.request_publish(self.CLIENT_IP, self.CLIENT_UDP_PORT, self.SERVER_IP, self.SERVER_TCP_PORT, self.name, subject, title, text)
 
-        # Uses your helper function to package the variables into a pipe-separated byte string.
-        # Format: PUBLISH | RQ# | Name | Subject | Title | Text
-        msg_bytes = encode_msg("PUBLISH", rq_num, self.name, subject, title, text)
-        print(f"[CLIENT] Sending PUBLISH request for RQ#{rq_num} over UDP...")
-        # Sends the packaged byte string over UDP to the server's IP and UDP port
-        self.udp_sock.sendto(msg_bytes, (self.SERVER_IP, self.SERVER_UDP_PORT))
-
-    
-    # ========================================================================
-    # 2.6 Commenting messages (over UDP)
-    # ========================================================================
-    #Publish Comment is created by a client and sent to server. This will be forwarded to the other server as-is
     def publish_comment(self, subject, title, text):
-        # Uses your helper function to package the variables into a pipe-separated byte string.
-        # Format: PUBLISH-COMMENT | RQ# | Name | Subject | Title | Text
-        msg_bytes = encode_msg("PUBLISH-COMMENT", self.name, subject, title, text)
-        print(f"[CLIENT] Sending PUBLISH-COMMENT request...")
-        # Sends the packaged byte string over UDP to the server's IP and UDP port
-        self.udp_sock.sendto(msg_bytes, (self.SERVER_IP, self.SERVER_UDP_PORT))
-
+        udp_handler.publish_comment(self.CLIENT_IP, self.CLIENT_UDP_PORT, self.SERVER_IP, self.SERVER_TCP_PORT, self.name, subject, title, text)
 
 
     # ========================================================================

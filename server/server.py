@@ -25,6 +25,33 @@ class Server:
     storage = json.load(open("storage.json", "r")) # Loads the storage.json file into a Python dictionary called 'storage'
     users = json.load(open("users.json", "r")) # Loads the users.json file into a Python dictionary called 'users'
 
+    # ========================================================================
+    # JSON File I/O Helper Methods
+    # ========================================================================
+    def load_users(self):
+        """Load users data from users.json"""
+        with open("users.json", "r") as f:
+            return json.load(f)
+
+    def save_users(self):
+        """Save users data to users.json"""
+        with open("users.json", "w") as f:
+            json.dump(self.users, f, indent=4)
+
+    def load_storage(self):
+        """Load storage data from storage.json"""
+        with open("storage.json", "r") as f:
+            return json.load(f)
+
+    def save_storage(self):
+        """Save storage data to storage.json"""
+        with open("storage.json", "w") as f:
+            json.dump(self.storage, f, indent=4)
+
+
+    # ========================================================================
+    # TCP/UDP Server Methods
+    # ========================================================================
     def handle_tcp_client(self, client_socket, address):
         """This function acts as a dedicated worker for a single TCP connection."""
         print(f"[TCP] Connection established with {address}")
@@ -41,6 +68,8 @@ class Server:
                 # Checks if the first word in the message is the registration command
                 if parsed_msg[0] == "REGISTER":
                     self.handle_registration_request(client_socket, parsed_msg)
+                elif parsed_msg[0] == "DE-REGISTER":
+                    self.handle_deregistration_request(client_socket, parsed_msg)
                 elif parsed_msg[0] == 'UPDATE':
                     self.handle_update_request(client_socket, parsed_msg)
                 elif parsed_msg[0] == 'SUBJECTS':
@@ -63,7 +92,6 @@ class Server:
                 self.handle_publish_request(address, parsed_msg)
             elif parsed_msg[0] == "FORWARD":
                 self.forward_publish_to_clients(parsed_msg[1], parsed_msg[2], parsed_msg[3], parsed_msg[4])
-
             elif parsed_msg[0] == "PUBLISH-COMMENT":
                 self.handle_comment_request(address, parsed_msg)
         finally:
@@ -115,6 +143,9 @@ class Server:
             client_thread.start()
 
 
+    # ========================================================================
+    # 2.1 Registration (over TCP)
+    # ========================================================================
     def handle_registration_request(self, client_socket, parsed_msg):
         # Grabs the Request Number (RQ#) from the list
         rq_num = parsed_msg[1]
@@ -136,8 +167,7 @@ class Server:
         }
         
         # Saves the updated users dictionary to users.json
-        with open("users.json", "w") as f:
-            json.dump(self.users, f, indent=4)
+        self.save_users()
         
         print(f"[TCP] Registered user: {client_name} at {client_ip}:{client_udp_port}")
         
@@ -147,10 +177,28 @@ class Server:
         # Sends the packaged reply back down the active TCP pipeline to the client
         client_socket.send(response)
         print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+
+
+    # ========================================================================
+    # 2.2 Deregistration (over TCP)
+    # ========================================================================
+    def handle_deregistration_request(self, client_socket, parsed_msg):
+        # Grabs the Request Number (RQ#) from the list
+        # note that this isn't used to send a reply as per requirements
+        rq_num = parsed_msg[1]
+
+        client_name = parsed_msg[2]
+
+        if client_name in self.users:
+            del self.users[client_name]
+            self.save_users()
+            print(f"[TCP] Deregistered user: {client_name}")
+        else:
+            print(f"[TCP] Deregistration failed: User {client_name} not found.")
     
 
     # ========================================================================
-    # 2.3. Users updating their information (over TCP)
+    # 2.3 Users updating their information (over TCP)
     # ========================================================================
     def handle_update_request(self, client_socket, parsed_msg):
         # Grabs the Request Number (RQ#) from the list
@@ -171,8 +219,7 @@ class Server:
         }
 
         #Saves the updated dictionary to storable .json
-        with open("users.json", "w") as f:
-            json.dump(self.users, f, indent = 4)
+        self.save_users()
         
         print(f"[TCP] Updated user: {client_name} to {client_ip}:{client_udp_port} with TCP port {client_tcp_port}")
 
@@ -185,7 +232,7 @@ class Server:
 
 
     # ========================================================================
-    # 2.3. Users updating their subjects of interest (over TCP)
+    # 2.4 Users updating their subjects of interest (over TCP)
     # ========================================================================
     def handle_subjects_request(self, client_socket, parsed_msg):
         # Grabs the Request Number (RQ#) from the list
@@ -199,8 +246,7 @@ class Server:
         self.users[client_name]["interests"] = client_interests
 
         #Saves the updated dictionary to storable .json
-        with open("users.json", "w") as f:
-            json.dump(self.users, f, indent = 4)
+        self.save_users()
 
         print(f"[TCP] Updated subjects of interest for {client_name}: {client_interests}")
 
@@ -211,8 +257,9 @@ class Server:
         client_socket.send(response)
         print(f"[TCP] Sent confirmation for RQ#{rq_num}")
 
+
     # ========================================================================
-    # 2.5. Users publishing and receiving messages on subjects of interest (over UDP)
+    # 2.5 Users publishing and receiving messages on subjects of interest (over UDP)
     # ========================================================================
     def handle_publish_request(self, address, parsed_msg):
         # Grabs the Request Number (RQ#) from the list
@@ -257,8 +304,7 @@ class Server:
         for subject in self.storage:
             if subject == requested_subject:
                 self.storage[subject].append({"title": title, "text": text})
-                with open("storage.json", "w") as f:
-                    json.dump(self.storage, f, indent=4)
+                self.save_storage()
                 break
         
         self.forward_publish_to_clients(name, subject, title, text)
@@ -301,8 +347,7 @@ class Server:
                                 print(f"[UDP] Duplicate comment detected. Ignoring.")
                                 return
                         article["comments"].append({"name": parsed_msg[1], "text": parsed_msg[4]})
-                        with open("storage.json", "w") as f:
-                            json.dump(self.storage, f, indent=4)
+                        self.save_storage()
                         break
 
         if not found_article:
