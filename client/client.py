@@ -71,6 +71,40 @@ class Client:
 
 
     # ========================================================================
+    # 2.3. Users updating their information (over TCP)
+    # ========================================================================
+    def request_update(self):
+        rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
+
+        # Packages the variables into a pipe-separated byte string using helper method from protocol method.
+        # Format: UPDATE | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+        msg_bytes = encode_msg("UPDATE", rq_num, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
+        print(f"[CLIENT] Sending UPDATE request for RQ#{rq_num} over TCP...")
+        # Creates a new socket object connecting to server IPv4 address over TCP
+        # Sends the packaged byte string through this connection
+        client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_tcp.connect((self.SERVER_IP, self.SERVER_TCP_PORT))
+        client_tcp.send(msg_bytes)
+
+      
+    # ========================================================================
+    # 2.4. Users updating their subjects of interest (over TCP)
+    # ========================================================================
+    def request_subjects_update(self, *subject_list):
+        rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
+
+        # Packages the variables into a pipe-separated byte string using helper method from protocol method.
+        # Format: SUBJECTS | RQ# | Name | List of Subjects
+        msg_bytes = encode_msg("SUBJECTS", rq_num, self.name, subject_list)
+        print(f"[CLIENT] Sending SUBJECTS request for RQ#{rq_num} over TCP...")
+        # Creates a new socket object connecting to server IPv4 address over TCP
+        # Sends the packaged byte string through this connection
+        client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_tcp.connect((self.SERVER_IP, self.SERVER_TCP_PORT))
+        client_tcp.send(msg_bytes)
+
+
+    # ========================================================================
     # 2.5. Users publishing and receiving messages on subjects of interest (over UDP)
     # ========================================================================
     def request_publish(self, subject, title, text):
