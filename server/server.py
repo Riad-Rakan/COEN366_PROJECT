@@ -6,7 +6,7 @@ import socket
 # Imports the threading library so the server can do multiple things at exactly the same time
 import threading 
 # Imports your custom helper functions to convert bytes to strings and back
-from protocol import decode_msg, encode_msg 
+from protocol import decode_msg, encode_msg
 # Imports the json library (useful later for saving your users to the storage.json file)
 import json 
 
