@@ -347,20 +347,21 @@ class Server:
             print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Subject")
             return
         
-        # Save article using title as the article key
-        if title in self.storage[requested_subject]:
-            print(f"[UDP] Duplicate article title detected for subject '{requested_subject}'. Overwriting existing article.")
-        self.storage[requested_subject][title] = {
-            "text": text,
-            "comments": {}
-        }
-        self.save_storage()
-        
-        self.forward_publish_to_clients(name, requested_subject, title, text)
+        self.forward_publish_to_clients(name, requested_subject, title, text)   # article gets saved in here
         self.forward_publish_to_servers(name, requested_subject, title, text)
         print(f"[UDP] Successfully handled PUBLISH request for RQ#{rq_num}. Forwarded to clients and servers.")
         
     def forward_publish_to_clients(self, name, subject, title, text):
+
+        # Save article using title as the article key. No need to check the input since it was already validated from handle_publish_request
+        if title in self.storage[subject]:
+            print(f"[UDP] Duplicate article title detected for subject '{subject}'. Overwriting existing article.")
+        self.storage[subject][title] = {
+            "text": text,
+            "comments": {}
+        }
+        self.save_storage()
+
         # This function will be responsible for blasting the news out to all interested users over UDP.
         response = encode_msg("MESSAGE", name, subject, title, text)
         for user in self.users:
