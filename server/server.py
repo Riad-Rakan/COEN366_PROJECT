@@ -395,14 +395,16 @@ class Server:
             return
 
         article = self.storage[subject][title]
-        if "comments" not in article or not isinstance(article["comments"], dict):
-            article["comments"] = {}
+        if "comments" not in article or not isinstance(article["comments"], list):
+            article["comments"] = []
 
-        if commenter in article["comments"] and article["comments"][commenter] == comment_text:
-            print(f"[UDP] Duplicate comment detected. Ignoring.")
-            return
+        # Check for duplicate comment (same commenter and same text)
+        for comment in article["comments"]:
+            if comment["commenter"] == commenter and comment["text"] == comment_text:
+                print(f"[UDP] Duplicate comment detected. Ignoring.")
+                return
 
-        article["comments"][commenter] = comment_text
+        article["comments"].append({"commenter": commenter, "text": comment_text})
         self.save_storage()
 
         # Forward to other server if sender was a client. Since all servers have the same port, we can check it to determine if the sender was a server.
