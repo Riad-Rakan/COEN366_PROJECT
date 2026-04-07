@@ -27,7 +27,9 @@ class Server:
 
     def __init__(self):
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_socket.bind((self.CLIENT_IP, self.CLIENT_UDP_PORT))
+
+    def bind_udp_socket(self):
+        self.udp_socket.bind((self.HOST, self.UDP_PORT))
 
     # ========================================================================
     # JSON File I/O Helper Methods
@@ -428,6 +430,8 @@ if __name__ == "__main__":
 
     other_ip = input("Enter the IP address of the other server (or press Enter if no other server): ")
     svr.other_server_ip = other_ip if other_ip != "" else '127.0.01'
+
+    svr.bind_udp_socket()
     
     # We want both the TCP and UDP servers to run simultaneously without blocking each other.
     # So, we launch the TCP server loop in its own background thread.
