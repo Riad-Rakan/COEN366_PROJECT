@@ -39,7 +39,7 @@ class Client:
         tcp_handler.request_update(self.server_ip, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
     def request_subjects_update(self, subjects_of_interest):
-        tcp_handler.request_subjects_update(self.server_ip, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
+        tcp_handler.request_subjects_update(self.server_ip, self.SERVER_TCP_PORT, self.name, subjects_of_interest)
 
     def request_publish(self, subject, title, text):
         udp_handler.request_publish(self.udp_sock, self.server_ip, self.SERVER_UDP_PORT, self.name, subject, title, text)

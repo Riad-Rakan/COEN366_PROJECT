@@ -234,10 +234,12 @@ class Server:
             return
 
         # Updates user dictionary with new client information
+        client_interests = self.users[client_name].get("interests", [])
         self.users[client_name] = {
             "ip":client_ip,
             "tcp_port": client_tcp_port,
-            "udp_port": client_udp_port
+            "udp_port": client_udp_port,
+            "interests": client_interests
         }
 
         # Saves the updated dictionary to storable .json
