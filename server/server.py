@@ -413,7 +413,7 @@ class Server:
     #PUBLISH-COMMENT is common between client->server and server->server, but client is the one who creates the encoded message.
     def forward_publish_comment_to_servers(self, parsed_msg):
         # This function will be responsible for forwarding the comment to other servers over UDP.
-        encoded_data = encode_msg(parsed_msg)
+        encoded_data = encode_msg(parsed_msg[0], parsed_msg[1], parsed_msg[2], parsed_msg[3], parsed_msg[4])
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if self.other_server_ip != '127.0.0.1': udp_socket.sendto(encoded_data, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
         print(f"[UDP] Forwarded comment to Server 2 at {self.other_server_ip}:{self.UDP_PORT}")
