@@ -5,7 +5,7 @@ import socket
 # Imports the threading library so the server can do multiple things at exactly the same time
 import threading 
 # Imports your custom helper functions to convert bytes to strings and back
-from protocol import decode_msg, encode_msg
+from protocol import decode_msg, encode_msg, get_my_ip
 # Imports the json library (useful later for saving your users to the storage.json file)
 import json 
 
@@ -20,7 +20,7 @@ class Server:
     # interfaces (Wi-Fi, Ethernet, localhost). This is required if other computers are connecting to it.
     HOST = '0.0.0.0' 
 
-    OTHER_SERVER_IP = '127.0.0.1'  # Replace with the actual IP address of Server 2
+    other_server_ip = '127.0.0.1'  # Replace with the actual IP address of Server 2
 
     storage = json.load(open("storage.json", "r")) # Loads the storage.json file into a Python dictionary called 'storage'
     users = json.load(open("users.json", "r")) # Loads the users.json file into a Python dictionary called 'users'
@@ -373,8 +373,8 @@ class Server:
         # This function will be responsible for forwarding the news to other servers over UDP.
         response = encode_msg("FORWARD", name, subject, title, text)
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if self.OTHER_SERVER_IP != '127.0.0.1': udp_socket.sendto(response, (self.OTHER_SERVER_IP, self.UDP_PORT)) #only send if there is a second server which is not localhost
-        print(f"[UDP] Forwarded message to Server 2 at {self.OTHER_SERVER_IP}:{self.UDP_PORT}")
+        if self.other_server_ip != '127.0.0.1': udp_socket.sendto(response, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
+        print(f"[UDP] Forwarded message to Server 2 at {self.other_server_ip}:{self.UDP_PORT}")
 
 
     # ========================================================================
@@ -408,11 +408,12 @@ class Server:
         self.forward_publish_comment_to_clients(commenter, subject, title, comment_text)
 
     #PUBLISH-COMMENT is common between client->server and server->server, but client is the one who creates the encoded message.
-    def forward_publish_comment_to_servers(self, encoded_data):
+    def forward_publish_comment_to_servers(self, parsed_msg):
         # This function will be responsible for forwarding the comment to other servers over UDP.
+        encoded_data = encode_msg(parsed_msg)
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if self.OTHER_SERVER_IP != '127.0.0.1': udp_socket.sendto(encoded_data, (self.OTHER_SERVER_IP, self.UDP_PORT)) #only send if there is a second server which is not localhost
-        print(f"[UDP] Forwarded comment to Server 2 at {self.OTHER_SERVER_IP}:{self.UDP_PORT}")
+        if self.other_server_ip != '127.0.0.1': udp_socket.sendto(encoded_data, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
+        print(f"[UDP] Forwarded comment to Server 2 at {self.other_server_ip}:{self.UDP_PORT}")
 
     def forward_publish_comment_to_clients(self, name, subject, title, text):
         # This function will be responsible for blasting the comment out to all interested users over UDP.
@@ -432,6 +433,11 @@ class Server:
 if __name__ == "__main__":
 
     svr: Server = Server()
+
+    print("[SERVER] Server IP Address:", get_my_ip())
+
+    other_ip = input("Enter the IP address of the other server (or press Enter if no other server): ")
+    svr.other_server_ip = other_ip if other_ip != "" else '127.0.01'
     
     # We want both the TCP and UDP servers to run simultaneously without blocking each other.
     # So, we launch the TCP server loop in its own background thread.

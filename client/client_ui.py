@@ -1,25 +1,8 @@
-"""
-Terminal User Interface for News Sharing Client
-Navigate with UP/DOWN arrow keys, press ENTER to select
-"""
-
 import sys
 import os
-import io
 import threading
-import time
 from collections import deque
 from datetime import datetime
-
-import client
-
-# For cross-platform key handling
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import tty
-    import termios
-    import select
 
 sys.path.append("..")
 from client import Client
@@ -65,6 +48,11 @@ class ClientUI:
         
         self.menu_options = [
             MenuOption(
+                "Update Server IP Address",
+                "Change the IP address of the server you want to connect to",
+                self.run_update_server_ip
+            ),
+            MenuOption(
                 "Register with Server",
                 "Connect to server and register your client",
                 self.run_register
@@ -103,6 +91,13 @@ class ClientUI:
         
         self.current_selection = 0
         self.running = True
+
+    def run_update_server_ip(self):
+        print("[LOG] Update Server IP Address - Enter details:")
+        new_ip = self.get_input("Enter new server IP address: ")
+        self.client.server_ip = new_ip
+        print(f"[LOG] Updated server IP address to {self.client.server_ip}")
+        self.pause_for_input()
     
     def run_register(self):
         print("[LOG] Starting registration...")
@@ -117,8 +112,10 @@ class ClientUI:
     
     # Automatically passes current ip, tcp and udp ports to client request_update method
     def run_update(self):
-        print("[LOG] Updating connection information with current user values...")
-        self.client.request_update()
+        print("[LOG] Update connection information - Enter details:")
+
+        name = self.get_input("Enter name: ")
+        self.client.request_update(name)
         print("[LOG] Send update request to the server.")
 
     # Asks user to input desired subjects separated by commas, and passes to relevant client.py method
@@ -192,42 +189,6 @@ class ClientUI:
         self.log_capture.original_stdout.flush()
         input()
     
-    def handle_key_press(self):
-        if sys.platform == "win32":
-            if msvcrt.kbhit():
-                key = msvcrt.getch()
-                if key == b'\xe0':  # Special key (like arrow keys)
-                    key = msvcrt.getch()
-                    if key == b'H':  # Up arrow
-                        self.current_selection = (self.current_selection - 1) % len(self.menu_options)
-                    elif key == b'P':  # Down arrow
-                        self.current_selection = (self.current_selection + 1) % len(self.menu_options)
-                elif key == b'\r':  # Enter
-                    return True
-                elif key == b'\x1b':  # Escape
-                    self.running = False
-        else:
-            # Unix implementation
-            if select.select([sys.stdin], [], [], 0.1)[0]:
-                try:
-                    old_settings = termios.tcgetattr(sys.stdin)
-                    tty.setraw(sys.stdin.fileno())
-                    key = sys.stdin.read(1)
-                    if key == '\x1b':  # Escape sequence
-                        next_key = sys.stdin.read(1)
-                        if next_key == '[':
-                            arrow_key = sys.stdin.read(1)
-                            if arrow_key == 'A':  # Up arrow
-                                self.current_selection = (self.current_selection - 1) % len(self.menu_options)
-                            elif arrow_key == 'B':  # Down arrow
-                                self.current_selection = (self.current_selection + 1) % len(self.menu_options)
-                    elif key == '\r':  # Enter
-                        return True
-                finally:
-                    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, old_settings)
-        
-        return False
-    
     def render_screen(self):
         """Render the entire screen"""
         os.system('cls' if sys.platform == "win32" else 'clear')
@@ -252,10 +213,7 @@ class ClientUI:
             print(f"{marker}[{i+1}] {option.name}")
             print(f"     {option.description}")
         print()
-        if sys.platform == "win32":
-            print("Use UP/DOWN arrow keys to navigate, ENTER to select, ESC to quit")
-        else:
-            print("Enter the option number and press ENTER to select")
+        print("Enter the option number and press ENTER to select")
         print("=" * 80)
         
         sys.stdout = self.log_capture
@@ -274,27 +232,16 @@ class ClientUI:
         return None
 
     def run(self):
-        if sys.platform == "win32":
-            print("[LOG] Client UI started. Use arrow keys to navigate.")
-        else:
-            print("[LOG] Client UI started. Use the menu number to select options.")
+        print("[LOG] Client UI started. Use the menu number to select options.")
         
         while self.running:
             self.render_screen()
             
-            if sys.platform == "win32":
-                if self.handle_key_press():
-                    selected = self.menu_options[self.current_selection]
-                    print(f"\n[ACTION] Selected: {selected.name}")
-                    selected.func()
-                else:
-                    time.sleep(0.05)  # Small delay to reduce CPU usage
-            else:
-                selected_index = self.get_menu_selection()
-                if selected_index is not None:
-                    selected = self.menu_options[selected_index]
-                    print(f"\n[ACTION] Selected: {selected.name}")
-                    selected.func()
+            selected_index = self.get_menu_selection()
+            if selected_index is not None:
+                selected = self.menu_options[selected_index]
+                print(f"\n[ACTION] Selected: {selected.name}")
+                selected.func()
         
         sys.stdout = self.log_capture.original_stdout
         print("\n[LOG] Client UI closed.")
