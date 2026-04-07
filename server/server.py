@@ -27,7 +27,7 @@ class Server:
 
     def __init__(self):
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.udp_sock.bind((self.CLIENT_IP, self.CLIENT_UDP_PORT))
+        self.udp_socket.bind((self.CLIENT_IP, self.CLIENT_UDP_PORT))
 
     # ========================================================================
     # JSON File I/O Helper Methods
