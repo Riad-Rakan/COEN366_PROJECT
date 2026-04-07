@@ -19,5 +19,17 @@
         "tcp_port": 52938,
         "udp_port": 63719,
         "interests": []
+    },
+    "2": {
+        "ip": "192.168.2.225",
+        "tcp_port": 52982,
+        "udp_port": 63989,
+        "interests": []
+    },
+    "1": {
+        "ip": "192.168.2.225",
+        "tcp_port": 52582,
+        "udp_port": 61339,
+        "interests": []
     }
 }
