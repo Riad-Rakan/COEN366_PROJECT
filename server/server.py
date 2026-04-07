@@ -204,29 +204,51 @@ class Server:
         # Grabs the Request Number (RQ#) from the list
         rq_num = parsed_msg[1]
 
-        #Extracts client information from update message
-        #Format: UPDATE | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+        # Extracts client information from update message
+        # Format: UPDATE | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
         client_name = parsed_msg[2]
-        client_ip = parsed_msg[3]
-        client_tcp_port = int(parsed_msg[4])
-        client_udp_port = int(parsed_msg[5])
+        client_ip = parsed_msg[3]            
 
-        #Updates user dictionary with new client information
+        # Verify that ports are numbers
+        try:
+            client_tcp_port = int(parsed_msg[4])
+            client_udp_port = int(parsed_msg[5])
+        except ValueError:
+            response = encode_msg("UPDATE-DENIED", rq_num, "Ports must be numbers")
+            client_socket.send(response)
+            print(f"[TCP] Sent UPDATE-DENIED for RQ#{rq_num}: Ports must be numbers")
+            return
+
+        # Verify that ports are in a valid range
+        if not (1 <= client_tcp_port <= 65535) or not (1 <= client_udp_port <= 65535):
+            response = encode_msg("UPDATE-DENIED", rq_num, "Ports must be within valid range (1-65535)")
+            client_socket.send(response)
+            print(f"[TCP] Sent UPDATE-DENIED for RQ#{rq_num}: Ports must be within valid range (1-65535)")
+            return
+
+        # Verify that user is registered
+        if client_name not in self.users:
+            response = encode_msg("UPDATE-DENIED", rq_num, f"User: {client_name} not registered")
+            client_socket.send(response)
+            print(f"[TCP] Sent UPDATE-DENIED for RQ#{rq_num}: User: {client_name} not registered")
+            return
+
+        # Updates user dictionary with new client information
         self.users[client_name] = {
             "ip":client_ip,
             "tcp_port": client_tcp_port,
             "udp_port": client_udp_port
         }
 
-        #Saves the updated dictionary to storable .json
+        # Saves the updated dictionary to storable .json
         self.save_users()
         
         print(f"[TCP] Updated user: {client_name} to {client_ip}:{client_udp_port} with TCP port {client_tcp_port}")
 
-        #Packages success response with format: UPDATE-CONFIRMED | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+        # Packages success response with format: UPDATE-CONFIRMED | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
         response = encode_msg("UPDATE-CONFIRMED", rq_num, client_name, client_ip, client_tcp_port, client_udp_port)
 
-        #Sends packaged response down the active TCP pipeline to the user
+        # Sends packaged response down the active TCP pipeline to the user
         client_socket.send(response)
         print(f"[TCP] Sent confirmation for RQ#{rq_num}")
 
@@ -238,24 +260,50 @@ class Server:
         # Grabs the Request Number (RQ#) from the list
         rq_num = parsed_msg[1]
 
-        #Extracts client information from update message
-        #Format: SUBJECTS | RQ# | Name | List of Subjects
+        # Extracts client information from update message
+        # Format: SUBJECTS | RQ# | Name | List of Subjects
         client_name = parsed_msg[2]
         client_interests = parsed_msg[3:]
 
-        self.users[client_name]["interests"] = client_interests
+        # Verify that the subjects list is not empty
+        if not client_interests:
+            response = encode_msg("SUBJECTS-REJECTED", rq_num, "Subject list is empty.")
+            client_socket.send(response)
+            print(f"[TCP] Sent SUBJECTS-REJECTED for RQ#{rq_num}: Subject list is empty.")
+            return
 
-        #Saves the updated dictionary to storable .json
-        self.save_users()
+        # Verify user is registered
+        elif client_name not in self.users:
+            response = encode_msg("SUBJECTS-REJECTED", rq_num, "User is not registered.")
+            client_socket.send(response)
+            print(f"[TCP] Sent SUBJECTS-REJECTED for RQ#{rq_num}: User: {client_name} not registered")
+            return
 
-        print(f"[TCP] Updated subjects of interest for {client_name}: {client_interests}")
+        # Verify that subject is a valid subject category from the storage.json subject list
+        invalid_subjects = []
+        for subject in client_interests:
+            if subject not in self.storage:
+                invalid_subjects.append(subject)
+        if invalid_subjects:
+            response = encode_msg("SUBJECTS-REJECTED", rq_num, f"Invalid subjects: {', '.join(invalid_subjects)}")
+            client_socket.send(response)
+            print(f"[TCP] Sent SUBJECTS-REJECTED for RQ#{rq_num}: Invalid subjects: {', '.join(invalid_subjects)}")
+            return
+        
+        else:
+            self.users[client_name]["interests"] = list(set(client_interests))
 
-        #Packages success response with format: UPDATE-CONFIRMED | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
-        response = encode_msg("SUBJECTS-UPDATED", rq_num, client_name, client_interests)
+            # Saves the updated dictionary to storable .json
+            self.save_users()
 
-        #Sends packaged response down the active TCP pipeline to the user
-        client_socket.send(response)
-        print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+            print(f"[TCP] Updated subjects of interest for {client_name}: {client_interests}")
+
+            # Packages success response with format: UPDATE-CONFIRMED | RQ# | Name | IP Address | TCP Socket# | UDP Socket#
+            response = encode_msg("SUBJECTS-UPDATED", rq_num, client_name, client_interests)
+
+            # Sends packaged response down the active TCP pipeline to the user
+            client_socket.send(response)
+            print(f"[TCP] Sent confirmation for RQ#{rq_num}")
 
 
     # ========================================================================

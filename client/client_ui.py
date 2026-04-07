@@ -136,7 +136,7 @@ class ClientUI:
         
         # If user enters at least one string as a subject it is passed to the relevant client method
         if cleaned_list:
-            self.client.request_subjects_update(*cleaned_list)
+            self.client.request_subjects_update(cleaned_list)
             print("[LOG] Sent subjects request to server.")
         else:
             print("[ERROR] Missing required fields")

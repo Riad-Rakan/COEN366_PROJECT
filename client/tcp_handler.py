@@ -60,11 +60,16 @@ def request_update(server_ip, server_tcp_port, client_name, client_ip, client_tc
     client_tcp.connect((server_ip, server_tcp_port))
     client_tcp.send(msg_bytes)
 
+    answer = client_tcp.recv(1024)                  # Receive the answer -> 1024 bytes is the max size to receive
+    answer_parsed = decode_msg(answer)              # decode the message we get from the server
+        
+    print(f"[CLIENT] Server replied: {answer_parsed}")
+
     
 # ========================================================================
 # 2.4. Users updating their subjects of interest (over TCP)
 # ========================================================================
-def request_subjects_update(server_ip, server_tcp_port, client_name, *subject_list):
+def request_subjects_update(server_ip, server_tcp_port, client_name, subject_list):
     rq_num = random.randint(0, 200) # Generates a random Request Number (RQ#) to track this specific publish attempt
 
     # Packages the variables into a pipe-separated byte string using helper method from protocol method.
@@ -76,3 +81,8 @@ def request_subjects_update(server_ip, server_tcp_port, client_name, *subject_li
     client_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_tcp.connect((server_ip, server_tcp_port))
     client_tcp.send(msg_bytes)
+        
+    answer = client_tcp.recv(1024)                  # Receive the answer -> 1024 bytes is the max size to receive
+    answer_parsed = decode_msg(answer)              # decode the message we get from the server
+        
+    print(f"[CLIENT] Server replied: {answer_parsed}")

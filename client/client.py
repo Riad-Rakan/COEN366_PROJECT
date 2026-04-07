@@ -12,12 +12,14 @@ class Client:
 
     # --- SERVER CONFIGURATION ---
     SERVER_IP = '100.100.238.78'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
+    #SERVER_IP = '127.0.0.1'
     SERVER_TCP_PORT = 10000                                 # The fixed TCP port the server is listening on for administrative tasks (like Registration)
     SERVER_UDP_PORT = 20000                                 # The fixed UDP port the server uses to blast out news messages
 
     # --- CLIENT CONFIGURATION ---
     name = ""                                   # The unique name for this specific user in the News Sharing System
     CLIENT_IP = '100.78.41.47'
+    #CLIENT_IP = '127.0.0.1'
     #CLIENT_IP = get_my_ip()                                 # Calls your helper function to automatically find this computer's local IP address
     CLIENT_TCP_PORT = random.randint(50000, 55000)          # Randomly selects a TCP port for the client to use (prevents conflicts if testing multiple clients on one PC)
     CLIENT_UDP_PORT = random.randint(60000, 65000)          # Randomly selects a UDP port for the client to listen for incoming news on
@@ -38,7 +40,7 @@ class Client:
         tcp_handler.request_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
     def request_subjects_update(self, subjects_of_interest):
-        tcp_handler.request_subjects_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
+        tcp_handler.request_subjects_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, subjects_of_interest)
 
     def request_publish(self, subject, title, text):
         udp_handler.request_publish(self.udp_sock, self.SERVER_IP, self.SERVER_UDP_PORT, self.name, subject, title, text)
