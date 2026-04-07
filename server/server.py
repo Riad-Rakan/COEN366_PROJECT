@@ -326,6 +326,11 @@ class Server:
 
         subject_valid = requested_subject in self.storage
 
+        for user in self.users:
+            if name == user:
+                name_valid = True
+                break
+
         if not name_valid:
             response = encode_msg("PUBLISH-DENIED", rq_num, "Invalid Name")
             self.udp_socket.sendto(response, address)
