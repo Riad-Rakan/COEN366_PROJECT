@@ -1,25 +1,8 @@
-"""
-Terminal User Interface for News Sharing Client
-Navigate with UP/DOWN arrow keys, press ENTER to select
-"""
-
 import sys
 import os
-import io
 import threading
-import time
 from collections import deque
 from datetime import datetime
-
-import client
-
-# For cross-platform key handling
-if sys.platform == "win32":
-    import msvcrt
-else:
-    import tty
-    import termios
-    import select
 
 sys.path.append("..")
 from client import Client
@@ -132,7 +115,7 @@ class ClientUI:
         print("[LOG] Update connection information - Enter details:")
 
         name = self.get_input("Enter name: ")
-        self.client.request_update()
+        self.client.request_update(name)
         print("[LOG] Send update request to the server.")
 
     # Asks user to input desired subjects separated by commas, and passes to relevant client.py method

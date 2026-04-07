@@ -29,23 +29,23 @@ class Client:
 
     def register_with_server(self, name: str):
         self.name = name
-        tcp_handler.register_with_server(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
+        tcp_handler.register_with_server(self.server_ip, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
     def deregister_with_server(self):
-        tcp_handler.deregister_with_server(self.SERVER_IP, self.SERVER_TCP_PORT, self.name)
+        tcp_handler.deregister_with_server(self.server_ip, self.SERVER_TCP_PORT, self.name)
 
     def request_update(self, name):
         self.name = name
-        tcp_handler.request_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
+        tcp_handler.request_update(self.server_ip, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
     def request_subjects_update(self, subjects_of_interest):
-        tcp_handler.request_subjects_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
+        tcp_handler.request_subjects_update(self.server_ip, self.SERVER_TCP_PORT, self.name, *subjects_of_interest)
 
     def request_publish(self, subject, title, text):
-        udp_handler.request_publish(self.udp_sock, self.SERVER_IP, self.SERVER_UDP_PORT, self.name, subject, title, text)
+        udp_handler.request_publish(self.udp_sock, self.server_ip, self.SERVER_UDP_PORT, self.name, subject, title, text)
 
     def publish_comment(self, subject, title, text):
-        udp_handler.publish_comment(self.udp_sock, self.SERVER_IP, self.SERVER_UDP_PORT, self.name, subject, title, text)
+        udp_handler.publish_comment(self.udp_sock, self.server_ip, self.SERVER_UDP_PORT, self.name, subject, title, text)
 
 
     # ========================================================================
