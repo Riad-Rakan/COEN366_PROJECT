@@ -11,7 +11,7 @@ from protocol import encode_msg, decode_msg, get_my_ip  # Imports your custom he
 class Client:
 
     # --- SERVER CONFIGURATION ---
-    SERVER_IP = '100.100.238.78'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
+    server_ip = '127.0.0.1'                                 # The IP address of the machine running server.py (Change this when testing on multiple computers)
     SERVER_TCP_PORT = 10000                                 # The fixed TCP port the server is listening on for administrative tasks (like Registration)
     SERVER_UDP_PORT = 20000                                 # The fixed UDP port the server uses to blast out news messages
 
@@ -34,7 +34,8 @@ class Client:
     def deregister_with_server(self):
         tcp_handler.deregister_with_server(self.SERVER_IP, self.SERVER_TCP_PORT, self.name)
 
-    def request_update(self):
+    def request_update(self, name):
+        self.name = name
         tcp_handler.request_update(self.SERVER_IP, self.SERVER_TCP_PORT, self.name, self.CLIENT_IP, self.CLIENT_TCP_PORT, self.CLIENT_UDP_PORT)
 
     def request_subjects_update(self, subjects_of_interest):

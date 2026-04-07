@@ -5,7 +5,7 @@ import socket
 # Imports the threading library so the server can do multiple things at exactly the same time
 import threading 
 # Imports your custom helper functions to convert bytes to strings and back
-from protocol import decode_msg, encode_msg
+from protocol import decode_msg, encode_msg, get_my_ip
 # Imports the json library (useful later for saving your users to the storage.json file)
 import json 
 
@@ -384,6 +384,8 @@ class Server:
 if __name__ == "__main__":
 
     svr: Server = Server()
+
+    print("[SERVER] Server IP Address:", get_my_ip())
     
     # We want both the TCP and UDP servers to run simultaneously without blocking each other.
     # So, we launch the TCP server loop in its own background thread.
