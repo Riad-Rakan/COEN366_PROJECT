@@ -25,6 +25,12 @@ class Server:
     storage = json.load(open("storage.json", "r")) # Loads the storage.json file into a Python dictionary called 'storage'
     users = json.load(open("users.json", "r")) # Loads the users.json file into a Python dictionary called 'users'
 
+    def __init__(self):
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def bind_udp_socket(self):
+        self.udp_socket.bind((self.HOST, self.UDP_PORT))
+
     # ========================================================================
     # JSON File I/O Helper Methods
     # ========================================================================
@@ -126,18 +132,13 @@ class Server:
 
     def start_udp_server(self):
         """This function sets up the UDP receptionist and loops forever."""
-        # Creates a UDP socket (AF_INET = IPv4, SOCK_DGRAM = UDP)
-        server_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        
-        # Binds the socket to the computer's IP and the designated UDP port
-        server_udp.bind((self.HOST, self.UDP_PORT))
         print(f"[SERVER] UDP Listening on port {self.UDP_PORT}")
         
         # An infinite loop to catch flying packets
         while True:
             # recvfrom() freezes this thread until a UDP packet hits the port.
             # Because UDP is connectionless, it catches the raw 'data', and the 'addr' of whoever threw it.
-            data, addr = server_udp.recvfrom(1024)
+            data, addr = self.udp_socket.recvfrom(1024)
             
             client_thread = threading.Thread(target=self.handle_udp_client, args=(data, addr))
             client_thread.start()
@@ -326,62 +327,56 @@ class Server:
         title = parsed_msg[4]
         text = parsed_msg[5]
 
-        user_udp_port = self.UDP_PORT
-
         name_valid = False
         subject_valid = False
 
+        subject_valid = requested_subject in self.storage
+
         for user in self.users:
             if name == user:
-                user_udp_port = self.users[user]["udp_port"]
                 name_valid = True
                 break
 
-        subject_valid = requested_subject in self.storage
-
         if not name_valid:
             response = encode_msg("PUBLISH-DENIED", rq_num, "Invalid Name")
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            udp_socket.sendto(response, address)
+            self.udp_socket.sendto(response, address)
             print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Name")
             return
         
         if not subject_valid:
             response = encode_msg("PUBLISH-DENIED", rq_num, "Invalid Subject")
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            udp_socket.sendto(response, address)
+            self.udp_socket.sendto(response, address)
             print(f"[UDP] Sent PUBLISH-DENIED for RQ#{rq_num}: Invalid Subject")
             return
         
-        # Save article using title as the article key
-        if title in self.storage[requested_subject]:
-            print(f"[UDP] Duplicate article title detected for subject '{requested_subject}'. Overwriting existing article.")
-        self.storage[requested_subject][title] = {
-            "text": text,
-            "comments": {}
-        }
-        self.save_storage()
-        
-        self.forward_publish_to_clients(name, requested_subject, title, text)
+        self.forward_publish_to_clients(name, requested_subject, title, text)   # article gets saved in here
         self.forward_publish_to_servers(name, requested_subject, title, text)
         print(f"[UDP] Successfully handled PUBLISH request for RQ#{rq_num}. Forwarded to clients and servers.")
         
     def forward_publish_to_clients(self, name, subject, title, text):
+
+        # Save article using title as the article key. No need to check the input since it was already validated from handle_publish_request
+        if title in self.storage[subject]:
+            print(f"[UDP] Duplicate article title detected for subject '{subject}'. Overwriting existing article.")
+        self.storage[subject][title] = {
+            "text": text,
+            "comments": {}
+        }
+        self.save_storage()
+
         # This function will be responsible for blasting the news out to all interested users over UDP.
         response = encode_msg("MESSAGE", name, subject, title, text)
         for user in self.users:
             if subject in self.users[user]["interests"]:
                 user_ip = self.users[user]["ip"]
                 user_udp_port = self.users[user]["udp_port"]
-                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                udp_socket.sendto(response, (user_ip, user_udp_port))
+                self.udp_socket.sendto(response, (user_ip, user_udp_port))
                 print(f"[UDP] Forwarded message to {user} at {user_ip}:{user_udp_port}")
 
     def forward_publish_to_servers(self, name, subject, title, text):
         # This function will be responsible for forwarding the news to other servers over UDP.
         response = encode_msg("FORWARD", name, subject, title, text)
-        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if self.other_server_ip != '127.0.0.1': udp_socket.sendto(response, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
+        if self.other_server_ip != '127.0.0.1': self.udp_socket.sendto(response, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
         print(f"[UDP] Forwarded message to Server 2 at {self.other_server_ip}:{self.UDP_PORT}")
 
 
@@ -400,14 +395,16 @@ class Server:
             return
 
         article = self.storage[subject][title]
-        if "comments" not in article or not isinstance(article["comments"], dict):
-            article["comments"] = {}
+        if "comments" not in article or not isinstance(article["comments"], list):
+            article["comments"] = []
 
-        if commenter in article["comments"] and article["comments"][commenter] == comment_text:
-            print(f"[UDP] Duplicate comment detected. Ignoring.")
-            return
+        # Check for duplicate comment (same commenter and same text)
+        for comment in article["comments"]:
+            if comment["commenter"] == commenter and comment["text"] == comment_text:
+                print(f"[UDP] Duplicate comment detected. Ignoring.")
+                return
 
-        article["comments"][commenter] = comment_text
+        article["comments"].append({"commenter": commenter, "text": comment_text})
         self.save_storage()
 
         # Forward to other server if sender was a client. Since all servers have the same port, we can check it to determine if the sender was a server.
@@ -418,9 +415,8 @@ class Server:
     #PUBLISH-COMMENT is common between client->server and server->server, but client is the one who creates the encoded message.
     def forward_publish_comment_to_servers(self, parsed_msg):
         # This function will be responsible for forwarding the comment to other servers over UDP.
-        encoded_data = encode_msg(parsed_msg)
-        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if self.other_server_ip != '127.0.0.1': udp_socket.sendto(encoded_data, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
+        encoded_data = encode_msg(parsed_msg[0], parsed_msg[1], parsed_msg[2], parsed_msg[3], parsed_msg[4])
+        if self.other_server_ip != '127.0.0.1': self.udp_socket.sendto(encoded_data, (self.other_server_ip, self.UDP_PORT)) #only send if there is a second server which is not localhost
         print(f"[UDP] Forwarded comment to Server 2 at {self.other_server_ip}:{self.UDP_PORT}")
 
     def forward_publish_comment_to_clients(self, name, subject, title, text):
@@ -430,8 +426,7 @@ class Server:
             if subject in self.users[user]["interests"]:
                 user_ip = self.users[user]["ip"]
                 user_udp_port = self.users[user]["udp_port"]
-                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                udp_socket.sendto(response, (user_ip, user_udp_port))
+                self.udp_socket.sendto(response, (user_ip, user_udp_port))
                 print(f"[UDP] Forwarded comment to {user} at {user_ip}:{user_udp_port}")
                 
 
@@ -446,6 +441,8 @@ if __name__ == "__main__":
 
     other_ip = input("Enter the IP address of the other server (or press Enter if no other server): ")
     svr.other_server_ip = other_ip if other_ip != "" else '127.0.01'
+
+    svr.bind_udp_socket()
     
     # We want both the TCP and UDP servers to run simultaneously without blocking each other.
     # So, we launch the TCP server loop in its own background thread.
