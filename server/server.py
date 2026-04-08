@@ -157,26 +157,32 @@ class Server:
         client_tcp_port = int(parsed_msg[4])
         client_udp_port = int(parsed_msg[5])
         
-        # Adds the client information to the users dictionary
-        # New clients start with an empty interests list
-        self.users[client_name] = {
-            "ip": client_ip,
-            "tcp_port": client_tcp_port,
-            "udp_port": client_udp_port,
-            "interests": []
-        }
-        
-        # Saves the updated users dictionary to users.json
-        self.save_users()
-        
-        print(f"[TCP] Registered user: {client_name} at {client_ip}:{client_udp_port}")
-        
-        # Packages the success reply: REGISTERED | RQ#
-        response = encode_msg("REGISTERED", rq_num)
-        
-        # Sends the packaged reply back down the active TCP pipeline to the client
+        # Verify that the name is not already registered
+        if client_name not in self.users:
+            # Adds the client information to the users dictionary
+            # New clients start with an empty interests list
+            self.users[client_name] = {
+                "ip": client_ip,
+                "tcp_port": client_tcp_port,
+                "udp_port": client_udp_port,
+                "interests": []
+            }
+            
+            # Saves the updated users dictionary to users.json
+            self.save_users()
+            
+            print(f"[TCP] Registered user: {client_name} at {client_ip}:{client_udp_port}")
+            
+            # Packages the success reply: REGISTERED | RQ#
+            response = encode_msg("REGISTERED", rq_num)
+            
+        else:
+            print(f"[TCP] Registration failed: User {client_name} already registered.")
+            # Sends the packaged reply back down the active TCP pipeline to the client
+            response = encode_msg("REGISTER-DENIED", rq_num, f"User {client_name} already registered.")
         client_socket.send(response)
-        print(f"[TCP] Sent confirmation for RQ#{rq_num}")
+        print(f"[TCP] Sent response for RQ#{rq_num}")
+        
 
 
     # ========================================================================
