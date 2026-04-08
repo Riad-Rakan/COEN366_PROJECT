@@ -3,6 +3,7 @@
 import socket
 
 def get_my_ip():
+    # gets ip address by connecting to an external address and checking the socket's own address.
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(('10.255.255.255', 1)) 

@@ -13,17 +13,25 @@ from client import Client
 # ============================================================================
 class LogCapture:
     def __init__(self, max_logs=20):
+        # double ended queue to store logs with a maximum length to prevent memory issues
+        # 20 by default
         self.logs = deque(maxlen=max_logs)
+        # Keep a reference to the original stdout so we can write prompts and user input without switching sys.stdout
         self.original_stdout = sys.stdout
     
     def write(self, message):
+        #remove whitespace-only messages to avoid cluttering the log with empty lines
         if message.strip():
+            #add details
             timestamp = datetime.now().strftime("%H:%M:%S")
             log_entry = f"[{timestamp}] {message.strip()}"
             self.logs.append(log_entry)
+
+        # Also write the message to the original stdout so it appears in the console for user input and prompts
         self.original_stdout.write(message)
     
     def flush(self):
+        # Flush the original stdout to ensure all prompts and user input are displayed immediately
         self.original_stdout.flush()
     
     def get_logs(self):
@@ -113,7 +121,6 @@ class ClientUI:
     # Automatically passes current ip, tcp and udp ports to client request_update method
     def run_update(self):
         print("[LOG] Update connection information - Enter details:")
-
         name = self.get_input("Enter name: ")
         self.client.request_update(name)
         print("[LOG] Send update request to the server.")
@@ -147,6 +154,7 @@ class ClientUI:
         title = self.get_input("Enter message title: ")
         text = self.get_input("Enter message text: ")
         
+        # must have all fields filled
         if  subject and title and text:
             self.client.request_publish(subject, title, text)
             print("[LOG] Sent publish request to server.")
@@ -190,7 +198,6 @@ class ClientUI:
         input()
     
     def render_screen(self):
-        """Render the entire screen"""
         os.system('cls' if sys.platform == "win32" else 'clear')
         
         sys.stdout = self.log_capture.original_stdout
@@ -220,8 +227,10 @@ class ClientUI:
     
     def get_menu_selection(self):
         selection = self.get_input("Select an option number: ")
+        #remove whitespace-only inputs to prevent errors and accidental selections
         if not selection.strip():
             return None
+        #return number input if valid
         if selection.isdigit():
             index = int(selection) - 1
             if 0 <= index < len(self.menu_options):
@@ -234,6 +243,7 @@ class ClientUI:
     def run(self):
         print("[LOG] Client UI started. Use the menu number to select options.")
         
+        #loop until the running == false
         while self.running:
             self.render_screen()
             
